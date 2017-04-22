@@ -1,6 +1,6 @@
 {
 	"ImportPath": "smtpw",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.8.1",
 	"Deps": [
 		{
 			"ImportPath": "github.com/mpdroog/beanstalkd",
