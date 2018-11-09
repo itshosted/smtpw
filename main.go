@@ -6,23 +6,28 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/mpdroog/beanstalkd" //"github.com/maxid/beanstalkd"
-	"gopkg.in/gomail.v1"
 	"log"
 	"os"
-	"github.com/mpdroog/smtpw/config"
 	"strings"
 	"time"
+
+	"smtpw/config"
+
 	"github.com/coreos/go-systemd/daemon"
+	"github.com/mpdroog/beanstalkd" //"github.com/maxid/beanstalkd"
+	"gopkg.in/gomail.v1"
 )
 
-const ERR_WAIT_SEC = 5
+// ErrWaitSec time to sleep on beanstalkd error
+const ErrWaitSec = 5
 
 var errTimedOut = errors.New("timed out")
 
 var verbose bool
 var readonly bool
 var hostname string
+
+// L for logging
 var L *log.Logger
 
 func proc(m config.Email, skipOne bool) error {
@@ -161,7 +166,7 @@ func main() {
 	}
 	if !sent {
 		L.Printf("SystemD notify NOT sent\n")
-        }
+	}
 
 	for {
 		job, e := queue.Reserve(15 * 60) //15min timeout
@@ -172,7 +177,7 @@ func main() {
 			}
 
 			L.Printf("Beanstalkd err: %s\n", e.Error())
-			time.Sleep(time.Second * ERR_WAIT_SEC)
+			time.Sleep(time.Second * ErrWaitSec)
 			if strings.HasSuffix(e.Error(), "broken pipe") {
 				// Beanstalkd down, reconnect!
 				q, e := connect()
@@ -224,5 +229,5 @@ func main() {
 			L.Printf("Finished job %d", job.Id)
 		}
 	}
-	queue.Quit()
+	// queue.Quit() # TODO: Unreachable code
 }

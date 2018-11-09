@@ -9,7 +9,7 @@ var (
 	letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 )
 
-// Random string chars, n=length
+// RandText Random string chars, n=length
 func RandText(n int) string {
 	rand.Seed(time.Now().Unix())
 	b := make([]rune, n)

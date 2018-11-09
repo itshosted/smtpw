@@ -2,11 +2,13 @@ package config
 
 // Read config.json
 import (
-	"encoding/json"
-	"os"
+	"fmt"
+
+	"github.com/jinzhu/configor"
 )
 
-type ConfigFrom struct {
+// From struct
+type From struct {
 	User     string
 	Pass     string
 	Host     string
@@ -17,11 +19,14 @@ type ConfigFrom struct {
 	Bounce   *string
 	Hostname string
 }
+
+// Config struct
 type Config struct {
-	Beanstalk string
-	From      map[string]ConfigFrom
+	Beanstalk string `default:"127.0.0.1:11300"`
+	From      map[string]From
 }
 
+// Email struct
 type Email struct {
 	From        string
 	To          []string
@@ -33,16 +38,17 @@ type Email struct {
 }
 
 var (
+	// C contains Config struct
 	C Config
 )
 
+// Init will read and parse config
 func Init(f string) error {
-	r, e := os.Open(f)
+
+	e := configor.New(&configor.Config{ENVPrefix: "SMTPW"}).Load(&C, f)
 	if e != nil {
-		return e
+		return fmt.Errorf("Config error: %s", e)
 	}
-	if e := json.NewDecoder(r).Decode(&C); e != nil {
-		return e
-	}
+
 	return nil
 }

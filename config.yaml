@@ -1,0 +1,13 @@
+---
+beanstalkd: "127.0.0.1:11300"
+from:
+  support:
+    user: "username"
+    pass: "password"
+    host: "smtp.example.com"
+    port: 587
+    from: "user@example.com"
+    display: "John Doe (user@example.com)"
+    bcc:
+      - "bcc@example.com"
+...
