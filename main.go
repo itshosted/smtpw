@@ -15,7 +15,7 @@ import (
 
 	"github.com/coreos/go-systemd/daemon"
 	"github.com/mpdroog/beanstalkd" //"github.com/maxid/beanstalkd"
-	"gopkg.in/gomail.v1"
+	gomail "gopkg.in/gomail.v1"
 )
 
 // ErrWaitSec time to sleep on beanstalkd error
@@ -133,7 +133,7 @@ func main() {
 	flag.BoolVar(&verbose, "v", false, "Verbose-mode")
 	flag.BoolVar(&skipOne, "s", false, "Delete e-mail on deverr")
 	flag.BoolVar(&readonly, "r", false, "Don't email but flush to stdout")
-	flag.StringVar(&configPath, "c", "./config.json", "Path to config.json")
+	flag.StringVar(&configPath, "c", "./config.yaml", "Path to config.yaml")
 	flag.Parse()
 
 	if e := config.Init(configPath); e != nil {
