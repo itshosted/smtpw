@@ -1,46 +1,80 @@
 pipeline {
-  agent {
-    node {
-      label 'centos6_golang'
-    }
+
+  agent { node { label 'master_node'} }
+
+  environment {
+    GOPATH="${WORKSPACE}"
+    GOBIN="${WORKSPACE}/bin"
   }
 
   stages {
-    stage('Update golang to latest version') {
-			steps {
-				sh 'yum update -y golang'
-			}
-    } // stage update golang
-
-    stage('build smtpw'){
+    stage("Preparation") {
       steps {
-        sh '''
-          go version
-          export GOPATH=/home/jenkins/workspace
-          mkdir -p \$GOPATH/src/github.com/itshosted \$GOPATH/bin/
-          REPONAME=`echo ${WORKSPACE} | cut -d '_' -f 2`
-          ln -s ${WORKSPACE} \$GOPATH/src/\${REPONAME}
-
-          # Build smtpw
-          cd \$GOPATH/src/\${REPONAME}
-          go get
-          go build -ldflags "-X main.version=${BRANCH_NAME}-${GIT_COMMIT:0:6}-${BUILD_NUMBER}"
-
-          mkdir -p ${WORKSPACE}/build
-		      mv \$GOPATH/bin/* ${WORKSPACE}/build
-          cp ${WORKSPACE}/smtpw.sh ${WORKSPACE}/build
-          cp ${WORKSPACE}/smtpw.target ${WORKSPACE}/build
-          cp ${WORKSPACE}/smtp*.service ${WORKSPACE}/build
-        '''
+        sh "mkdir -p ${WORKSPACE}/{bin,pkg,src}"
+        dir ("${WORKSPACE}/src/smtpw") {
+          checkout scm
+          sh "go get"
+        }
       }
-    } // stage build
+    }
 
-    stage('Store smtpw artifact') {
-			steps {
-				archiveArtifacts artifacts: 'build/*'
-			}
-    } // stage store
+    stage("Static Analysis"){
+      parallel {
 
-  } // steps
+        stage('golint'){
+          steps {
+            dir ("${WORKSPACE}/src/smtpw") {
+              sh "go get -u golang.org/x/lint/golint"
+              sh "${WORKSPACE}/bin/golint -set_exit_status ./..."
+            }
+          }
+        }
 
+        stage('go vet'){
+          steps {
+            dir ("${WORKSPACE}/src/smtpw") {
+              sh "go vet ./..."
+            }
+          }
+        }
+
+        stage('go test'){
+          steps {
+            dir ("${WORKSPACE}/src/smtpw") {
+              sh "go test ./..."
+            }
+          }
+        }
+
+      } // parallel
+    } // stage Static Analysus
+
+    stage("go build"){
+      steps {
+        dir ("${WORKSPACE}/src/smtpw") {
+          sh '''
+            GOOS=linux GOARCH=amd64 go build -i -v -ldflags="-X main.version=$(git describe --always --long --dirty --all)";
+          '''
+        }
+      }
+    }
+    stage("Archive smtpw") {
+      steps {
+        archiveArtifacts artifacts: "bin/smtpw"
+        sh "ssh repos.it.lan 'mkdir -p /var/www/repos/smtpw/${BRANCH_NAME}/'"
+
+        sh "scp bin/smtpw repos.it.lan:/var/www/repos/smtpw/${BRANCH_NAME}/smtpw.${BUILD_NUMBER}"
+        sh "ssh repos.it.lan 'ln -sfn /var/www/repos/smtpw/${BRANCH_NAME}/smtpw.${BUILD_NUMBER} /var/www/repos/smtpw/${BRANCH_NAME}/smtpw.latest'"
+
+      }
+    }
+  } // stages
+  post {
+    success {
+      slackSend (message: "SUCCESS: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})", color: '#00ff04')
+    }
+    failure {
+      slackSend (message: "FAILURE: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]' (${env.BUILD_URL})", color: '#FF0000')
+    }
+  }
 } // pipeline
