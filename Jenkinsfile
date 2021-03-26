@@ -3,17 +3,21 @@ pipeline {
   agent { node { label 'master_node'} }
 
   environment {
-    GOPATH="${WORKSPACE}"
+    GOPATH="${WORKSPACE}/"
     GOBIN="${WORKSPACE}/bin"
+    BINARY_NAME="smtpw"
   }
 
   stages {
+
     stage("Preparation") {
       steps {
+        cleanWs()
         sh "mkdir -p ${WORKSPACE}/{bin,pkg,src}"
-        dir ("${WORKSPACE}/src/smtpw") {
+        sh "docker pull golang:1-alpine"
+        dir ("${WORKSPACE}/src/${BINARY_NAME}") {
           checkout scm
-          sh "go get"
+          sh "go get -t ."
         }
       }
     }
@@ -33,7 +37,7 @@ pipeline {
 
         stage('go vet'){
           steps {
-            dir ("${WORKSPACE}/src/smtpw") {
+            dir ("${WORKSPACE}/src/${BINARY_NAME}") {
               sh "go vet ./..."
             }
           }
@@ -41,24 +45,69 @@ pipeline {
 
         stage('go test'){
           steps {
-            dir ("${WORKSPACE}/src/smtpw") {
+            dir ("${WORKSPACE}/src/${BINARY_NAME}") {
               sh "go test ./..."
             }
           }
         }
 
       } // parallel
-    } // stage Static Analysus
+    }
 
     stage("go build"){
       steps {
-        dir ("${WORKSPACE}/src/smtpw") {
+        dir ("${WORKSPACE}/src/${BINARY_NAME}") {
           sh '''
-            GOOS=linux GOARCH=amd64 go build -i -v -ldflags="-X main.version=$(git describe --always --long --dirty --all)";
+            CGO_ENABLED=0 GOOS=linux go build -mod=mod -a -installsuffix cgo -ldflags="-X main.version=$(git describe --always --long --dirty --all)-$(date +%Y-%m-%d-%H:%M)";
           '''
         }
       }
     }
+
+    stage("Docker Build") {
+      parallel {
+
+        stage("Production") {
+          when {
+            branch 'master'
+          }
+          steps {
+            dir ("${WORKSPACE}/src/${BINARY_NAME}") {
+              // Build image
+              sh "docker build -f Dockerfile -t usenetfarm/${BINARY_NAME} ."
+              sh "docker tag usenetfarm/${BINARY_NAME} usenetfarm/${BINARY_NAME}:${env.BUILD_NUMBER}"
+            }
+          }
+        }
+        stage("Non-Production") {
+          when {
+            not {
+              branch 'master'
+            }
+          }
+          steps {
+            dir ("${WORKSPACE}/src/${BINARY_NAME}") {
+              // Build image
+              sh "docker build -f Dockerfile -t usenetfarm/${BINARY_NAME}:${BRANCH_NAME}${BUILD_NUMBER} ."
+              // sh "docker tag usenetfarm/${BINARY_NAME} usenetfarm/${BINARY_NAME}:${BRANCH_NAME}${BUILD_NUMBER}"
+            }
+          }
+        }
+
+      }
+    }
+
+    stage("Docker push") {
+      when {
+        branch 'master'
+      }
+      steps {
+        withDockerRegistry([ credentialsId: "dockerhub", url: "" ]) {
+          sh "docker push usenetfarm/${BINARY_NAME}"
+        }
+      }
+    }
+
     stage("Archive smtpw") {
       steps {
         archiveArtifacts artifacts: "bin/smtpw"
