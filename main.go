@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -25,6 +26,7 @@ var errTimedOut = errors.New("timed out")
 
 var verbose bool
 var readonly bool
+var debug bool
 var hostname string
 
 // L for logging
@@ -89,7 +91,7 @@ func proc(m config.Email, skipOne bool) error {
 			}
 			return errors.New("Attachment: " + name + " is not base64!")
 		}
-		msg.Embed(gomail.CreateFile(name, raw))
+		msg.Attach(gomail.CreateFile(name, raw))
 	}
 
 	if readonly {
@@ -105,7 +107,12 @@ func proc(m config.Email, skipOne bool) error {
 		return nil
 	}
 
-	mailer := gomail.NewMailer(conf.Host, conf.User, conf.Pass, conf.Port)
+	cfg := gomail.SetTLSConfig(&tls.Config{ServerName: conf.Host})
+	if conf.Insecure {
+		cfg = gomail.SetTLSConfig(&tls.Config{InsecureSkipVerify : true})
+	}
+	auth := LoginAuth(conf.User, conf.Pass)
+	mailer := gomail.NewCustomMailer(fmt.Sprintf("%s:%d", conf.Host, conf.Port), auth, cfg)
 	return mailer.Send(msg)
 }
 
@@ -131,6 +138,7 @@ func main() {
 	L = log.New(os.Stdout, "", log.LstdFlags)
 
 	flag.BoolVar(&verbose, "v", false, "Verbose-mode")
+        flag.BoolVar(&debug, "d", false, "Debug-mode")
 	flag.BoolVar(&skipOne, "s", false, "Delete e-mail on deverr")
 	flag.BoolVar(&readonly, "r", false, "Don't email but flush to stdout")
 	flag.StringVar(&configPath, "c", "./config.yaml", "Path to config.yaml")
@@ -190,8 +198,7 @@ func main() {
 			}
 			continue
 		}
-		if verbose {
-			L.Printf("Parse job %d\n", job.Id)
+		if debug {
 			L.Printf("JSON:\n%s\n", string(job.Data))
 		}
 		// Parse
@@ -209,6 +216,10 @@ func main() {
 			L.Printf("CRIT: Invalid JSON received (msg=%s)\n", e.Error())
 			continue
 		}
+
+                if verbose {
+                        L.Printf("Email (job=%d email=%s subject=%s)\n", job.Id, m.To[0], m.Subject)
+                }
 
 		if e := proc(m, skipOne); e != nil {
 			// 501 Syntax error in parameters or arguments

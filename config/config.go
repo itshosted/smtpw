@@ -18,6 +18,7 @@ type From struct {
 	Bcc      []string
 	Bounce   *string
 	Hostname string
+	Insecure bool
 }
 
 // Config struct
