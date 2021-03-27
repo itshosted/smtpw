@@ -8,4 +8,4 @@ FROM scratch
 LABEL MAINTAINER Jethro van Ginkel <info@itshosted.nl>
 WORKDIR /app
 COPY --from=builder /go/src/smtpw/smtpw /app/
-ENTRYPOINT ["./smtpw"]
+CMD ["./smtpw"]

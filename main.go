@@ -109,7 +109,7 @@ func proc(m config.Email, skipOne bool) error {
 
 	cfg := gomail.SetTLSConfig(&tls.Config{ServerName: conf.Host})
 	if conf.Insecure {
-		cfg = gomail.SetTLSConfig(&tls.Config{InsecureSkipVerify : true})
+		cfg = gomail.SetTLSConfig(&tls.Config{InsecureSkipVerify: true})
 	}
 	auth := LoginAuth(conf.User, conf.Pass)
 	mailer := gomail.NewCustomMailer(fmt.Sprintf("%s:%d", conf.Host, conf.Port), auth, cfg)
@@ -138,7 +138,7 @@ func main() {
 	L = log.New(os.Stdout, "", log.LstdFlags)
 
 	flag.BoolVar(&verbose, "v", false, "Verbose-mode")
-        flag.BoolVar(&debug, "d", false, "Debug-mode")
+	flag.BoolVar(&debug, "d", false, "Debug-mode")
 	flag.BoolVar(&skipOne, "s", false, "Delete e-mail on deverr")
 	flag.BoolVar(&readonly, "r", false, "Don't email but flush to stdout")
 	flag.StringVar(&configPath, "c", "./config.yaml", "Path to config.yaml")
@@ -217,9 +217,9 @@ func main() {
 			continue
 		}
 
-                if verbose {
-                        L.Printf("Email (job=%d email=%s subject=%s)\n", job.Id, m.To[0], m.Subject)
-                }
+		if verbose {
+			L.Printf("Email (job=%d email=%s subject=%s)\n", job.Id, m.To[0], m.Subject)
+		}
 
 		if e := proc(m, skipOne); e != nil {
 			// 501 Syntax error in parameters or arguments

@@ -110,11 +110,11 @@ pipeline {
 
     stage("Archive smtpw") {
       steps {
-        archiveArtifacts artifacts: "bin/smtpw"
-        sh "ssh repos.it.lan 'mkdir -p /var/www/repos/smtpw/${BRANCH_NAME}/'"
+        archiveArtifacts artifacts: "bin/${BINARY_NAME}"
+        sh "ssh repos.it.lan 'mkdir -p /var/www/repos/${BINARY_NAME}/${BRANCH_NAME}/'"
 
-        sh "scp bin/smtpw repos.it.lan:/var/www/repos/smtpw/${BRANCH_NAME}/smtpw.${BUILD_NUMBER}"
-        sh "ssh repos.it.lan 'ln -sfn /var/www/repos/smtpw/${BRANCH_NAME}/smtpw.${BUILD_NUMBER} /var/www/repos/smtpw/${BRANCH_NAME}/smtpw.latest'"
+        sh "scp bin/${BINARY_NAME} repos.it.lan:/var/www/repos/${BINARY_NAME}/${BRANCH_NAME}/${BINARY_NAME}.${BUILD_NUMBER}"
+        sh "ssh repos.it.lan 'ln -sfn /var/www/repos/${BINARY_NAME}/${BRANCH_NAME}/${BINARY_NAME}.${BUILD_NUMBER} /var/www/repos/${BINARY_NAME}/${BRANCH_NAME}/${BINARY_NAME}.latest'"
 
       }
     }
